@@ -113,4 +113,5 @@ Ejemplo de log:
 ## 👥 Equipo
 
 - **Diego Castañeda** – Desarrollo backend y pipeline IA.  
-- (agregar integrantes según roles: PO, Scrum Master, etc.)
+- **Scarlett Socias**
+- **Millaray Llanquén** 
