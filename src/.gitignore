@@ -1,15 +1,20 @@
-# Entorno virtual
-.venv/
+# Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# VS Code
+# Virtual env
+.venv/
+
+# VSCode
 .vscode/
 
-# Logs
-*.log
+# Data y resultados
+artifacts/
+logs/
+*.npz
 
-# Datos locales (DICOM, CSV, etc.)
-data/
+# Archivos temporales
+.DS_Store
+Thumbs.db
