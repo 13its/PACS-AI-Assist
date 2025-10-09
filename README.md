@@ -114,4 +114,4 @@ Ejemplo de log:
 
 - **Diego Castañeda** – Desarrollo backend y pipeline IA.  
 - **Scarlett Socias**
-- **Millaray Llanquén** 
+- **Millaray Llanquin** 
