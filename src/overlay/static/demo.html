@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PACS-AI Overlay Demo</title>
+  <style>
+    html,body { margin:0; padding:0; background:#111; color:#eee; font-family:system-ui, sans-serif }
+    .wrap { display:flex; align-items:center; justify-content:center; height:100vh; }
+    .panel { position:relative; }
+    img#base { max-width:90vw; max-height:85vh; display:block; }
+    .hud { position:fixed; left:12px; top:12px; background:#000a; padding:8px 10px; border-radius:8px; font-size:13px }
+    .hud button { margin-right:6px }
+  </style>
+</head>
+<body>
+  <div class="hud">
+    <button id="btnSend">Enviar bbox de prueba</button>
+    <span id="status">WS: …</span>
+  </div>
+
+  <div class="wrap">
+    <div class="panel">
+      <!-- Cambia sample.png por tu imagen -->
+      <img id="base" src="/static/sample.png" alt="imagen base" />
+    </div>
+  </div>
+
+  <!-- === Overlay canvas + WS (drop-in) === -->
+  <script>
+  (function(){
+    const WS_HOST = location.hostname;
+    const WS_PORT = 8000;
+    const wsUrl = (location.protocol === "https:" ? "wss://" : "ws://") + WS_HOST + ":" + WS_PORT + "/ws";
+
+    // Canvas overlay full-screen
+    const canvas = document.createElement("canvas");
+    Object.assign(canvas.style, {
+      position: "fixed", inset: "0px", width: "100vw", height: "100vh",
+      pointerEvents: "none", zIndex: 9999
+    });
+    canvas.width = innerWidth; canvas.height = innerHeight;
+    document.body.appendChild(canvas);
+    const ctx = canvas.getContext("2d");
+
+    let scaleX=1, scaleY=1, offsetX=0, offsetY=0;
+    let lastBoxes = [];
+    let currentSOP = null;
+
+    function draw(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      for (const b of lastBoxes){
+        const x = offsetX + b.x * scaleX, y = offsetY + b.y * scaleY;
+        const w = b.w * scaleX, h = b.h * scaleY;
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "rgba(255,0,0,0.95)";
+        ctx.strokeRect(x, y, w, h);
+        const tag = `${b.label ?? "obj"}${b.score!=null ? " " + Math.round(b.score*100)+"%" : ""}`;
+        ctx.font = "12px sans-serif";
+        const tw = ctx.measureText(tag).width + 8, th = 16;
+        ctx.fillStyle = "rgba(255,0,0,0.95)";
+        ctx.fillRect(x, Math.max(0, y-th), tw, th);
+        ctx.fillStyle = "#fff";
+        ctx.fillText(tag, x+4, Math.max(12, y-4));
+      }
+      requestAnimationFrame(draw);
+    }
+    requestAnimationFrame(draw);
+
+    function resize(){ canvas.width = innerWidth; canvas.height = innerHeight; mapToImage(); }
+    addEventListener("resize", resize);
+
+    // Mapear coords imagen->pantalla
+    function mapToImage(){
+      const img = document.getElementById("base");
+      const r = img.getBoundingClientRect();
+      // usar tamaño nativo de la imagen para coords de las cajas
+      const imgW = img.naturalWidth || r.width;
+      const imgH = img.naturalHeight || r.height;
+      scaleX = r.width / imgW;
+      scaleY = r.height / imgH;
+      offsetX = r.left; offsetY = r.top;
+    }
+
+    const statusEl = document.getElementById("status");
+    const ws = new WebSocket(wsUrl);
+    ws.onopen = ()=> statusEl.textContent = "WS: conectado";
+    ws.onclose = ()=> statusEl.textContent = "WS: cerrado";
+    ws.onerror = ()=> statusEl.textContent = "WS: error";
+    ws.onmessage = (ev)=>{
+      try{
+        const msg = JSON.parse(ev.data);
+        if (msg.type === "bbox" && Array.isArray(msg.boxes)) {
+          if (!currentSOP || msg.sopInstanceUID === currentSOP) lastBoxes = msg.boxes;
+        }
+      } catch(e){}
+    };
+
+    window.addEventListener("load", mapToImage);
+    document.getElementById("base").addEventListener("load", mapToImage);
+
+    // API pública mínima (por si deseas usar la consola)
+    window.PACSOverlay = {
+      setCurrentSOP: (uid)=> currentSOP = uid,
+      clear: ()=> lastBoxes = [],
+      setViewportMapping: ({imgW,imgH,viewX,viewY,viewW,viewH})=>{
+        scaleX = viewW/imgW; scaleY = viewH/imgH; offsetX = viewX; offsetY = viewY;
+      }
+    };
+
+    // Botón para enviar una bbox de prueba desde el browser (sin server)
+    document.getElementById("btnSend").onclick = async ()=>{
+      try {
+        await fetch("/push", {
+          method: "POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({
+            type: "bbox",
+            sopInstanceUID: "demo",
+            boxes: [{ x:120, y:90, w:160, h:120, label:"lesión", score:0.92 }]
+          })
+        });
+      } catch (e) {}
+    };
+  })();
+  </script>
+</body>
+</html>
