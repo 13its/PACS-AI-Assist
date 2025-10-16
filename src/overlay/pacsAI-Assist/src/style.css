@@ -1,0 +1,130 @@
+    html,
+    body,
+    #root {
+    height: 100%;
+    margin: 0;
+    background: #000;
+    overflow: hidden;
+    }
+
+    .viewer {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    width: 100vw;
+    height: 100vh;
+    }
+
+    .overlay {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    }
+
+    .hud {
+    position: fixed;
+    left: 12px;
+    top: 12px;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-family: sans-serif;
+    font-size: 14px;
+    }
+
+    .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    }
+
+    .dot.open {
+    background-color: #00ff00;
+    }
+    .dot.closed {
+    background-color: #ff4040;
+    }
+    .dot.connecting {
+    background-color: #ffaa00;
+    }
+
+    .small {
+    opacity: 0.8;
+    }
+
+    .inp {
+    background: #222;
+    border: 1px solid #555;
+    color: #ddd;
+    padding: 5px 8px;
+    border-radius: 6px;
+    }
+    /* Botón PACS-AI Assist — medidas y estilo exacto */
+    .pacsai-btn{
+    position: fixed;
+    top: 10px;
+    right: 14px;
+    z-index: 70;
+    width: 114px; height: 20px;
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 0; line-height: 20px;
+    border-radius: 3px;
+    border: 1px solid #3082EC;                /* stroke */
+    background: #041C4A;                      /* fill */
+    color: #3082EC;                           /* texto */
+    font: 400 12px "Inter", system-ui, sans-serif;  /* Inter regular 12 */
+    box-shadow: 0 4px 4px rgba(0,0,0,0.25);   /* drop shadow: y=4, blur=4 */
+    cursor: pointer; user-select: none;
+    }
+    .pacsai-btn:hover { filter: brightness(1.05); }
+    .pacsai-btn.active{
+    background:#2B75D8;                       /* fill activo */
+    border-color:#3082EC;                     /* stroke mantiene */
+    color:#041C4A;                            /* texto activo */
+    }
+    .pacsai-btn .ws-dot{
+    width:8px; height:8px; border-radius:50%; margin-left:6px;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.25) inset;
+    }
+    .pacsai-btn .ws-dot.connecting{ background:#ffaa00; }
+    .pacsai-btn .ws-dot.open{ background:#22c55e; }
+    .pacsai-btn .ws-dot.closed{ background:#ef4444; }
+
+    /* Panel de IA */
+    .assist-panel{
+    position: fixed; left: 0; top: 0; bottom: 0; width: 280px;
+    background: rgba(4,12,28,0.95);
+    border-right: 1px solid #1e293b;
+    transform: translateX(-100%);
+    transition: transform .2s ease-out;
+    z-index: 69; color:#e5e7eb; padding: 10px;
+    }
+    .assist-panel.open{ transform: translateX(0); }
+    .assist-header{ display:flex; align-items:center; gap:10px; margin-bottom:8px;}
+    .assist-header .title{ font-weight:600; }
+    .ws-chip{ padding:2px 6px; border-radius:6px; font-size:12px; }
+    .ws-chip.open{ background:#064e3b; color:#bbf7d0; }
+    .ws-chip.closed{ background:#7f1d1d; color:#fecaca; }
+    .ws-chip.connecting{ background:#78350f; color:#fde68a; }
+    .row{ margin:8px 0; }
+    .list{ overflow:auto; max-height: calc(100vh - 120px); }
+    .card{
+    background:#0b152d; border:1px solid #203356; border-radius:8px;
+    padding:8px; margin-bottom:8px; cursor:pointer;
+    }
+    .card.sel{ outline:2px solid #3082EC; }
+    .card .sop{ font-size:12px; opacity:0.9; }
+    .card .meta{ font-size:12px; opacity:0.7; }
+
+    .inp{
+    width:100%; border-radius:6px; border:1px solid #2a2f3a;
+    background:#111827; color:#e5e7eb; padding:6px 8px;
+    }
+    .empty{ opacity:.7; font-size:13px; }
