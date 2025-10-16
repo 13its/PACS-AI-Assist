@@ -70,7 +70,7 @@
     .pacsai-btn{
     position: fixed;
     top: 10px;
-    right: 14px;
+    right: 23%;
     z-index: 70;
     width: 114px; height: 20px;
     display: inline-flex; align-items: center; justify-content: center;
@@ -128,3 +128,55 @@
     background:#111827; color:#e5e7eb; padding:6px 8px;
     }
     .empty{ opacity:.7; font-size:13px; }
+
+/* Contenedor y botón de soporte IA */
+.ai-support-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 70;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.ai-support-btn {
+    min-width: 200px;
+    padding: 12px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    background: #041C4A;
+    border: 1px solid #3082EC;
+    color: #fff;
+    font: 500 14px "Inter", system-ui, sans-serif;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.ai-support-btn:hover {
+    background: #0d2657;
+    border-color: #4993fd;
+}
+
+.ai-support-btn .ver-mas-btn {
+    margin-top: 8px;
+    padding: 8px 20px;
+    background: #041C4A;
+    border: 1px solid #3082EC;
+    border-radius: 6px;
+    color: #fff;
+    font: 500 13px "Inter", system-ui, sans-serif;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    transition: all 0.2s ease;
+}
+
+.ai-support-btn .ver-mas-btn:hover {
+    background: #0d2657;
+    border-color: #4993fd;
+}

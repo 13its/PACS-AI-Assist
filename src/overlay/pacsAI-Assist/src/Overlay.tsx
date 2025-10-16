@@ -122,6 +122,25 @@
             <span className={`ws-dot ${wsStatus}`}/>
         </button>
 
+        {/* Botón de soporte IA - solo visible cuando el panel está abierto */}
+        {assistOpen && (
+            <div className="ai-support-container">
+                <button
+                    className="ai-support-btn"
+                    onClick={() => setAssistOpen(false)}
+                    title="Soporte con IA"
+                >
+                    ¿Quieres soporte de IA?
+                    <button 
+                        className="ver-mas-btn"
+                        onClick={() => setAssistOpen(false)}
+                    >
+                        Sí, ver hallazgo
+                    </button>
+                </button>
+            </div>
+        )}
+
         {/* Panel lateral de IA */}
         <aside className={`assist-panel ${assistOpen ? "open" : ""}`}>
             <div className="assist-header">
