@@ -70,7 +70,7 @@
     .pacsai-btn{
     position: fixed;
     top: 10px;
-    right: 14px;
+    right: 23%;
     z-index: 70;
     width: 114px; height: 20px;
     display: inline-flex; align-items: center; justify-content: center;
@@ -128,3 +128,31 @@
     background:#111827; color:#e5e7eb; padding:6px 8px;
     }
     .empty{ opacity:.7; font-size:13px; }
+
+    /* Marcadores y tarjeta de detalle */
+    .overlay-ui{ position: fixed; inset: 0; pointer-events: none; z-index: 75; }
+    .marker{ position: absolute; pointer-events: auto; transform: translate(-50%, -50%); }
+    .marker .marker-circle{
+        width: 26px; height: 26px; border-radius: 50%;
+        border: 3px solid rgba(255,215,0,0.98); background: rgba(4,28,74,0.4);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    }
+    .marker .marker-center{ width:6px; height:6px; border-radius:50%; background: rgba(255,215,0,0.98); position: absolute; left:50%; top:50%; transform:translate(-50%,-50%); }
+    .marker .marker-handle{ position:absolute; right:-12px; top:50%; transform:translateY(-50%); width:18px; height:18px; }
+
+    /* Flecha: dibujamos con SVG que se posiciona desde el marker hasta la tarjeta */
+    .connector-svg{ position: absolute; left:0; top:0; width:100%; height:100%; pointer-events: none; z-index: 74; }
+
+    .detail-card{
+        position: absolute; pointer-events: auto; background: rgba(10,14,20,0.95);
+        color: #e8eefc; padding: 10px 12px; border-radius: 8px; border:1px solid rgba(255,215,0,0.12);
+        min-width: 160px; max-width: 360px; box-shadow: 0 8px 20px rgba(4,12,28,0.75);
+        font-family: Inter, system-ui, sans-serif; font-size:13px;
+    }
+    .detail-card .headline{ font-weight:600; margin-bottom:6px; }
+    .detail-card .muted{ opacity:0.75; font-size:12px; }
+    .detail-card .expand{ margin-top:8px; display:flex; gap:8px; align-items:center; }
+    .detail-card .btn-link{ background:transparent; border:0; color:#ffd84d; cursor:pointer; padding:6px 8px; border-radius:6px; }
+
+    /* small responsive tweaks */
+    @media (max-width: 800px){ .pacsai-btn{ right:6%; } }

@@ -1,14 +1,63 @@
+        // Renderiza la flecha y el círculo apuntando a la imagen
+        function ArrowAndCircle({ markerPos }: { markerPos: { x: number; y: number } }) {
+            const cardX = Math.max(8, markerPos.x - 320);
+            const cardY = Math.max(8, markerPos.y - 18);
+            const startX = cardX + 300;
+            const startY = cardY + 24;
+            const endX = markerPos.x;
+            const endY = markerPos.y;
+            const midX = (startX + endX) / 2;
+            const path = `M ${startX} ${startY} C ${midX} ${startY} ${midX} ${endY} ${endX} ${endY}`;
+            return (
+                <>
+                    <svg className="connector-svg" xmlns="http://www.w3.org/2000/svg">
+                        <g>
+                            <path d={path} stroke="rgba(255,215,0,0.95)" strokeWidth={3} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                            <circle cx={endX} cy={endY} r={10} fill="none" stroke="rgba(255,215,0,0.98)" strokeWidth={4}/>
+                        </g>
+                    </svg>
+                    <div className="marker" style={{ left: markerPos.x, top: markerPos.y }}>
+                        <div className="marker-circle" style={{width:32,height:32,borderWidth:4}}>
+                            <div className="marker-center" />
+                        </div>
+                    </div>
+                </>
+            );
+        }
     import React, { useEffect, useRef, useState } from "react";
 
-    type Box = { x: number; y: number; w: number; h: number; label?: string; score?: number };
-    type Msg = { type: "bbox"; sopInstanceUID: string; boxes: Box[]; meta?: Record<string, any> };
+type Box = { x: number; y: number; w: number; h: number; label?: string; score?: number };
+type Msg = { type: "bbox"; sopInstanceUID: string; boxes: Box[]; meta?: Record<string, any> };
 
-    type Props = {
-    ohifUrl?: string;             // URL inicial (explorer o viewer)
-    wsUrl?: string;               // ws del backend
-    };
+type Props = {
+  ohifUrl?: string;             // URL inicial (explorer o viewer)
+  wsUrl?: string;               // ws del backend
+};
 
-    export default function OverlayApp({
+// Componente para renderizar la flecha y el círculo
+function ArrowAndCircle({ markerPos }: { markerPos: { x: number; y: number } }) {
+  return (
+    <>
+      <svg className="connector-svg" xmlns="http://www.w3.org/2000/svg">
+        <g>
+          <path 
+            d={`M ${markerPos.x - 260} ${markerPos.y} L ${markerPos.x - 10} ${markerPos.y}`} 
+            stroke="rgba(255,215,0,0.95)" 
+            strokeWidth={3} 
+            fill="none" 
+            strokeLinecap="round" 
+            strokeLinejoin="round" 
+          />
+          <circle cx={markerPos.x} cy={markerPos.y} r={10} fill="none" stroke="rgba(255,215,0,0.98)" strokeWidth={4}/>
+        </g>
+      </svg>
+      <div className="marker" style={{ left: markerPos.x, top: markerPos.y }}>
+        <div className="marker-circle" style={{width:32,height:32,borderWidth:4}}>
+          <div className="marker-center" />
+        </div>
+      </div>
+    </>
+  );    export default function OverlayApp({
     ohifUrl = "http://localhost:8042/app/explorer.html",
     wsUrl = "ws://localhost:8000/ws",
     }: Props) {
@@ -20,6 +69,8 @@
     const [iframeSrc, setIframeSrc] = useState<string>(ohifUrl);
     const [wsStatus, setWsStatus] = useState<"connecting"|"open"|"closed">("connecting");
     const [assistOpen, setAssistOpen] = useState(false);
+    // Paso del overlay: 'intro' (mensaje inicial), 'detalle' (marcador+flecha+detalle)
+    const [overlayStep, setOverlayStep] = useState<'intro'|'detalle'|null>(null);
 
     // Datos IA
     const [currentSOP, setCurrentSOP] = useState<string | null>(null);
@@ -57,7 +108,7 @@
         const ctx = canvas.getContext("2d")!;
         let raf = 0;
 
-        const draw = () => {
+    const draw = () => {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -103,6 +154,26 @@
         };
     }, [boxes]);
 
+    // Posiciones en pantalla de los markers (para tarjeta y flecha)
+    const [markerPos, setMarkerPos] = useState<{x:number,y:number,box?:Box}|null>(null);
+    const [cardOpen, setCardOpen] = useState(false);
+
+    // recalcula posiciones de markers cuando cambian boxes o tamaño
+    useEffect(()=>{
+        const ifr = iframeRef.current;
+        if (!ifr) { setMarkerPos(null); return; }
+        const r = ifr.getBoundingClientRect();
+        const imgW = 512, imgH = 512;
+        const scaleX = r.width / imgW;
+        const scaleY = r.height / imgH;
+        // tomamos el primer box (si hay) como marcador activo
+        if (boxes.length===0){ setMarkerPos(null); return; }
+        const b = boxes[0];
+        const x = r.left + (b.x + b.w/2) * scaleX;
+        const y = r.top  + (b.y + b.h/2) * scaleY;
+        setMarkerPos({ x, y, box: b });
+    }, [boxes, iframeRef.current]);
+
     // Cambiar SOP desde la lista del panel
     const selectSOP = (sop: string) => {
         setCurrentSOP(sop);
@@ -115,7 +186,14 @@
         {/* Botón PACS-AI Assist (siempre visible sobre el viewer) */}
         <button
             className={`pacsai-btn ${assistOpen ? "active" : ""}`}
-            onClick={() => setAssistOpen(v => !v)}
+            onClick={() => {
+                setAssistOpen(v => {
+                  const next = !v;
+                  if (next) setOverlayStep('intro');
+                  else setOverlayStep(null);
+                  return next;
+                });
+            }}
             title="Abrir panel PACS-AI Assist"
         >
             PACS-AI Assist
@@ -162,6 +240,81 @@
 
         {/* Capa de overlay */}
         <canvas ref={canvasRef} className="overlay" />
+
+                        {/* UI overlay: paso 1: mensaje inicial */}
+                        {assistOpen && overlayStep === 'intro' && (
+                            <div className="overlay-ui" style={{display:'flex',alignItems:'center',justifyContent:'center'}}>
+                                <div style={{background:'#0b152d',color:'#e5e7eb',padding:'28px 32px',borderRadius:12,border:'2px solid #3082EC',boxShadow:'0 8px 32px #000a',fontSize:20,maxWidth:400,textAlign:'center'}}>
+                                    ¿Quieres soporte de IA?
+                                    <div style={{marginTop:24}}>
+                                                        <button 
+                  className="btn-link" 
+                  style={{fontSize:18}} 
+                  onClick={()=>{
+                    setOverlayStep('detalle');
+                    // Establecer posición del marcador (coordenadas del ejemplo)
+                    setMarkerPos({x: window.innerWidth/2, y: window.innerHeight/2, box: {
+                      x: 250, y: 300, w: 20, h: 20,
+                      label: "Nódulo",
+                      score: 0.75
+                    }});
+                  }}
+                >
+                  Sí, ver hallazgo
+                </button>
+               </div>
+             </div>
+           </div>
+         )}
+
+        {/* UI overlay: paso 2: marcador, flecha y caja de detalle */}
+        {assistOpen && overlayStep === 'detalle' && (
+          <div className="overlay-ui" aria-hidden={false}>
+            {markerPos && <ArrowAndCircle markerPos={markerPos} />}
+            <div
+              className="detail-card"
+              style={{
+                position: 'absolute',
+                left: markerPos ? Math.max(8, markerPos.x - 320) : 8,
+                top: markerPos ? Math.max(8, markerPos.y - 32) : 8,
+                background: '#183a5a',
+                color: '#e5e7eb',
+                border: '2px solid #6ec1e4',
+                borderRadius: 8,
+                padding: '24px',
+                minWidth: 280,
+                maxWidth: 420,
+                fontSize: 14,
+                lineHeight: 1.6,
+                boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
+              }}
+            >
+              <div style={{fontWeight:600,marginBottom:8}}>Probabilidad de malignidad: 75%</div>
+              <div>Clasificación del hallazgo: maligno</div>
+              <div>Tamaño: diámetro mayor 2mm</div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                                {/* UI overlay: paso 2: solo caja de texto centrada con el detalle */}
+                                {assistOpen && overlayStep === 'detalle' && (
+                                    <div className="overlay-ui" style={{display:'flex',alignItems:'center',justifyContent:'center'}}>
+                                        <div style={{background:'#183a5a', color:'#e5e7eb', border:'2px solid #6ec1e4', borderRadius:12, boxShadow:'0 8px 32px #000a', fontSize:16, minWidth:320, maxWidth:480, padding:'32px 36px', textAlign:'left', lineHeight:1.7}}>
+                                            <div style={{fontWeight:600,marginBottom:8}}>Probabilidad de malignidad: 75%</div>
+                                            <div>Clasificación del hallazgo: maligno</div>
+                                            <div>Tamaño: diámetro mayor 2mm</div>
+                                            <div>Volumen estimado: 2mm³.</div>
+                                            <div>Ubicación anatómica: Lóbulo inferior derecho, segmento pulmonar posterior</div>
+                                            <div>Profundidad / relación pleural: Subpleural (adyacente a la pleura).</div>
+                                            <div>Contraste / densidad: Promedio y desviación aún por calcular en HU.</div>
+                                            <div>Características morfológicas: Nódulo sólido con aspecto en vidrio esmerilado.</div>
+                                            <div>Contornos: Espiculados, sin ser completamente lisos.</div>
+                                            <div>Crecimiento temporal: No hay estudios previos</div>
+                                            <div>Porcentaje de confianza de la IA en cada etiqueta: 70% sólido, 25% GGO (ground-glass opacity).</div>
+                                        </div>
+                                    </div>
+                                )}
         </>
     );
     }
