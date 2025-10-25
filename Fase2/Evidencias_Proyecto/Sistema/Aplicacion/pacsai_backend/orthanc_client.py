@@ -60,20 +60,16 @@ def wado_instance(study_uid: str, series_uid: str, sop_uid: str) -> pydicom.Data
         pass  # caemos al fallback
 
     # 2) Fallback: REST nativa de Orthanc (lookup correcto)
-    lr = requests.post(
-        f"{ORTHANC_URL}/tools/lookup",
-        json={"Level": "Instance", "Identifier": sop_uid},
-        auth=AUTH,
-    )
+    # reemplaza el bloque fallback por:
+    lr = requests.post(f"{ORTHANC_URL}/tools/find",
+                    json={"Level":"Instance","Query":{"SOPInstanceUID": sop_uid}},
+                    auth=AUTH)
     lr.raise_for_status()
     hits = lr.json()
-    inst_id = None
-    if isinstance(hits, list) and hits:
-        inst_id = hits[0] if isinstance(hits[0], str) else hits[0].get("ID")
-    elif isinstance(hits, dict):
-        inst_id = hits.get("ID")
+    inst_id = hits[0] if hits else None
     if not inst_id:
         raise RuntimeError(f"No se pudo resolver Orthanc ID para SOP {sop_uid}")
+
 
     fr = requests.get(f"{ORTHANC_URL}/instances/{inst_id}/file", auth=AUTH)
     fr.raise_for_status()
@@ -154,7 +150,6 @@ def get_instance_tags(inst_id: str):
     return _get(f"/instances/{inst_id}/tags")
 
 def lookup_instance_id(sop_uid: str):
-    # Antes usábamos /tools/lookup y a veces no devuelve nada
     hits = _post("/tools/find", {
         "Level": "Instance",
         "Query": { "SOPInstanceUID": sop_uid }
@@ -162,4 +157,5 @@ def lookup_instance_id(sop_uid: str):
     if not hits:
         raise RuntimeError(f"Instance no encontrada para SOP {sop_uid}")
     return hits[0]
+
 

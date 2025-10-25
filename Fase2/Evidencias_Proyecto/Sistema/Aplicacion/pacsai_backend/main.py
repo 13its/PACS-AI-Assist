@@ -59,10 +59,6 @@ def analyze_download_only(req: AnalyzeDownloadOnlyReq):
                 sop_uid = tags.get("SOPInstanceUID")
                 if not sop_uid:
                     raise HTTPException(404, "No pude leer SOPInstanceUID de la instancia")
-
-        # Valida que el SOP exista en Orthanc (si no, revienta aquí)
-        #_ = lookup_instance_id(sop_uid)
-
         # Descarga/ordenación (prueba de flujo)
         volume, _ = load_volume_sorted(study_uid, series_uid)
         z, y, x = map(int, volume.shape)
