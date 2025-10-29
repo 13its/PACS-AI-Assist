@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>PACS-AI OHIF Wrapper</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <style>
+    html,body,iframe { height:100%; width:100%; margin:0; border:0; }
+    body { background:#0b1020; }
+  </style>
+</head>
+<body>
+  <iframe id="ohif" allow="clipboard-read; clipboard-write"></iframe>
+
+  <script>
+    // Pasa todos los parámetros (StudyInstanceUIDs, etc.) al OHIF original
+    const qs = location.search || '';
+    const ohifUrl = '/ohif/viewer' + qs;
+
+    const iframe = document.getElementById('ohif');
+    iframe.src = ohifUrl;
+
+    // Inyecta tu script dentro del documento del OHIF cuando carga
+    iframe.addEventListener('load', () => {
+      try {
+        const d = iframe.contentDocument;
+        if (!d) return;
+
+        // evita doble inyección al refrescar internos del SPA
+        if (d.defaultView && d.defaultView.__pacs_ai_injected__) return;
+
+        const s = d.createElement('script');
+        s.src = '/pacs-ai/inject.js?ts=' + Date.now();
+        d.head.appendChild(s);
+      } catch (e) {
+        console.error('[PACS-AI] wrapper inject error:', e);
+      }
+    });
+  </script>
+</body>
+</html>
