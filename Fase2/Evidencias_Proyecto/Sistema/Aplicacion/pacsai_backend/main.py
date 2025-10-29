@@ -28,6 +28,13 @@ MAX_FRAMES = int(os.getenv("SEG_MAX_FRAMES", "220"))  # para la demo; ajusta si 
 
 app = FastAPI(title="PACS-AI Assist Backend", version="0.2.0 (dummy-seg-fast)")
 
+from fastapi.middleware.cors import CORSMiddleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8042","http://127.0.0.1:8042"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # =======================
 # Modelos de request
@@ -430,5 +437,5 @@ def analyze_download_only(payload: AnalyzePayload):
 # =======================
 # Run (local)
 # =======================
-# Ejecuta con:
+# Se Ejecuta con:
 # uvicorn main:app --host 127.0.0.1 --port 8001 --reload

@@ -7,35 +7,220 @@
   <style>
     html,body,iframe { height:100%; width:100%; margin:0; border:0; }
     body { background:#0b1020; }
+    #pacsai-badge{
+      position:fixed;left:10px;top:10px;z-index:2147483647;
+      background:#234;color:#9fefb3;padding:4px 8px;border-radius:8px;
+      font:12px/1.2 system-ui,Segoe UI,Roboto,Arial;opacity:.9
+    }
   </style>
 </head>
 <body>
+  <div id="pacsai-badge">PACS-AI: cargando…</div>
   <iframe id="ohif" allow="clipboard-read; clipboard-write"></iframe>
 
   <script>
-    // Pasa todos los parámetros (StudyInstanceUIDs, etc.) al OHIF original
-    const qs = location.search || '';
-    const ohifUrl = '/ohif/viewer' + qs;
+    const BACKEND = 'http://127.0.0.1:8001/analyze/download-only';
+    const badge   = document.getElementById('pacsai-badge');
+    const iframe  = document.getElementById('ohif');
 
-    const iframe = document.getElementById('ohif');
-    iframe.src = ohifUrl;
+    // Cache-buster para que SIEMPRE recargue el contenido del iframe
+    const sep = location.search ? '&' : '?';
+    iframe.src = '/ohif/viewer' + location.search + sep + 'pacsai=' + Date.now();
 
-    // Inyecta tu script dentro del documento del OHIF cuando carga
-    iframe.addEventListener('load', () => {
-      try {
-        const d = iframe.contentDocument;
-        if (!d) return;
+    const getStudyUID = (win) => {
+      const q1 = new URLSearchParams((win&&win.location&&win.location.search)||'');
+      const q2 = new URLSearchParams(location.search);
+      return (q1.get('StudyInstanceUIDs') || q2.get('StudyInstanceUIDs') || '').replace(/[<>]/g,'');
+    };
 
-        // evita doble inyección al refrescar internos del SPA
-        if (d.defaultView && d.defaultView.__pacs_ai_injected__) return;
+    async function sendToAI(win){
+      const suid = getStudyUID(win);
+      if(!suid){ (win||window).alert('No se encontró StudyInstanceUIDs'); return; }
+      try{
+        const res = await fetch(BACKEND,{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({StudyInstanceUID:suid, background:true})
+        });
+        if(!res.ok) throw new Error('HTTP '+res.status);
+        await res.json().catch(()=>{});
+        (win||window).alert('Enviado a IA ✅');
+      }catch(e){ console.error(e); (win||window).alert('Error red: '+e); }
+    }
 
-        const s = d.createElement('script');
-        s.src = '/pacs-ai/inject.js?ts=' + Date.now();
-        d.head.appendChild(s);
-      } catch (e) {
-        console.error('[PACS-AI] wrapper inject error:', e);
+    function ensureHeaderButton(iw){
+      const doc = iw?.document;
+      if (!doc) return false;
+      if (doc.getElementById('pacsai-toolbar-btn')) return true;
+
+      // 1) Localiza header/toolbar y el botón "Reset" (multi-idioma)
+      const header =
+        doc.querySelector('header, [role="banner"], .ohif-header, .ohif-top-bar, .ViewerHeader, .ViewerTopBar') || doc.body;
+
+      const resetBtn = Array.from(
+        header.querySelectorAll('button, [role="button"], [data-cy]')
+      ).find(el => {
+        const t = (el.getAttribute?.('title') || el.getAttribute?.('aria-label') || el.textContent || '').trim();
+        return /^(reset\s*view|reset|restablecer|reiniciar)/i.test(t);
+      });
+
+      if (!resetBtn) return false; // aún no montó la toolbar → deja que el poll/observer reintenten
+
+      // 2) Crea el botón (sin position:absolute)
+      const btn = doc.createElement('button');
+      btn.id = 'pacsai-toolbar-btn';
+      btn.type = 'button';
+      btn.setAttribute('aria-label','Enviar a IA');
+      btn.title = 'Enviar a IA';
+      btn.textContent = 'Enviar a IA';
+      btn.style.cssText = [
+        'padding:0 10px',               // padding vertical 0 para alinear con la altura clonada
+        'height:auto',                  // se fijará igual a Reset abajo
+        'border-radius:4px',            // se sobrescribe con el de Reset
+        'border:1px solid rgba(255,255,255,0.18)',
+        'background:rgba(255,255,255,0.08)',
+        'color:#fff','cursor:pointer',
+        'font:500 12px/1 system-ui,Segoe UI,Roboto,Arial',
+        'display:inline-flex','align-items:center','gap:6px',
+        'white-space:nowrap','margin-left:8px'
+      ].join(';');
+      btn.onmouseenter = () => (btn.style.background='rgba(255,255,255,0.16)');
+      btn.onmouseleave = () => (btn.style.background='rgba(255,255,255,0.08)');
+      btn.onclick = (e)=>{ e.preventDefault(); e.stopPropagation(); sendToAI(iw); };
+
+      // 3) Si hay separador inmediatamente después de Reset, inserta ANTES del separador
+      let insertAfter = resetBtn;
+      const next = resetBtn.nextElementSibling;
+      if (next && (
+          next.getAttribute('role') === 'separator' ||
+          /\bdivider|separator|Separator|ToolbarSeparator\b/i.test(next.className || '')
+        )) {
+        insertAfter = next; // insertaremos antes de este separador
+        insertAfter.parentElement.insertBefore(btn, insertAfter);
+      } else {
+        resetBtn.insertAdjacentElement('afterend', btn);
       }
-    });
+
+      // 4) Igualar altura y redondeo al botón Reset para alinear verticalmente
+      const rs = iw.getComputedStyle(resetBtn);
+      const h  = parseFloat(rs.height) || 28;
+      btn.style.height       = `${Math.round(h)}px`;
+      btn.style.lineHeight   = `${Math.round(h)}px`;
+      if (rs.borderRadius) btn.style.borderRadius = rs.borderRadius;
+
+      // Asegura alineación del contenedor
+      const parent = resetBtn.parentElement || header;
+      const ps = iw.getComputedStyle(parent);
+      if (ps.display !== 'flex' && ps.display !== 'inline-flex') parent.style.display = 'inline-flex';
+      if (!ps.gap || ps.gap === '0px') parent.style.gap = '8px';
+      if (ps.alignItems !== 'center') parent.style.alignItems = 'center';
+
+      // 5) Elimina fallback si estaba visible y oculta badge
+      const fb = doc.getElementById('pacsai-fallback-btn');
+      if (fb) fb.remove();
+      const badgeEl = window.document.getElementById('pacsai-badge');
+      if (badgeEl) badgeEl.style.display='none';
+
+      console.log('[PACS-AI] Botón "Enviar a IA" alineado junto a Reset');
+      return true;
+    }
+
+    function tryMount(){
+      const iw = iframe.contentWindow;
+      if(!iw) return;
+
+      // 1) intentar cada 200 ms hasta 16 s meterlo en header
+      let ticks = 0;
+      const poll = setInterval(() => {
+        const ok = ensureHeaderButton(iw);
+        if (ok) {
+          clearInterval(poll);
+          const fb = iw.document.getElementById('pacsai-fallback-btn');
+          if (fb) fb.remove();
+          return;
+        }
+        if (++ticks === 10) { // ~2s
+          ensureFallbackButton(iw); // muestra algo mientras tanto
+        }
+        if (ticks > 80) clearInterval(poll); // dejamos el observer haciendo el trabajo fino
+      }, 200);
+
+
+      // 2) watchdog: si en 2 s no ha podido tocar el iframe, mete fallback
+      const watchdog = setTimeout(()=>{ ensureFallback(iw); }, 2000);
+
+      function ensureFallbackButton(iw){
+        const doc = iw?.document;
+        if (!doc) return false;
+        if (doc.getElementById('pacsai-fallback-btn')) return true;
+
+        const header = doc.querySelector('header, [data-cy="header"], .ohif-header, .ohif-top-bar, .ViewerHeader, .ViewerTopBar, .Header, .TopBar') || doc.body;
+        const hRect  = header.getBoundingClientRect();
+
+        // detecta el control más a la derecha para no taparlo
+        let rightmost = null, maxRight = -Infinity;
+        const candidates = Array.from(header.querySelectorAll('button, a[role="button"], [role="button"]'))
+          .filter(el => el.offsetParent !== null);
+        for (const el of candidates){
+          const r = el.getBoundingClientRect();
+          if (r.right > maxRight){ maxRight = r.right; rightmost = r; }
+        }
+        const safeRight = Math.max(12, Math.round((hRect.right - (rightmost ? rightmost.left : hRect.right)) + 12));
+        const topPx     = Math.max(6, Math.round(hRect.top + (hRect.height - 28) / 2)); // centrado vertical en la barra
+
+        const btn = doc.createElement('button');
+        btn.id='pacsai-fallback-btn'; btn.type='button';
+        btn.setAttribute('aria-label','Enviar a IA'); btn.title='Enviar a IA';
+        btn.textContent='Enviar a IA';
+        btn.style.cssText = [
+          'position:fixed',
+          `top:${topPx}px`,
+          `right:${safeRight}px`,
+          'z-index:2147483647',
+          'padding:4px 10px',
+          'height:28px','line-height:28px',
+          'border-radius:8px',
+          'border:1px solid rgba(255,255,255,0.18)',
+          'background:rgba(255,255,255,0.08)',
+          'color:#fff','cursor:pointer',
+          'font:500 12px/28px system-ui,Segoe UI,Roboto,Arial',
+          'display:inline-flex','align-items:center','gap:6px','white-space:nowrap',
+          'backdrop-filter:blur(2px)'
+        ].join(';');
+        btn.onmouseenter=()=> (btn.style.background='rgba(255,255,255,0.16)');
+        btn.onmouseleave=()=> (btn.style.background='rgba(255,255,255,0.08)');
+        btn.onclick=(e)=>{ e.preventDefault(); e.stopPropagation(); sendToAI(iw); };
+
+        doc.body.appendChild(btn);
+        const badgeEl = window.document.getElementById('pacsai-badge');
+        if (badgeEl) badgeEl.style.display='none';
+        console.log('[PACS-AI] Botón fallback alineado con el header');
+        return true;
+      }
+
+      // 3) si el layout del iframe cambia, reinyecta si hiciera falta
+      try{
+        const mo = new iw.MutationObserver(() => {
+          const attached = ensureHeaderButton(iw);
+          if (attached) {
+            const fb = iw.document.getElementById('pacsai-fallback-btn');
+            if (fb) fb.remove(); // si ya había fallback, lo quitamos
+          } else {
+            // si aún no hay nada, garantiza fallback visible
+            if (!iw.document.getElementById('pacsai-toolbar-btn')) {
+              ensureFallbackButton(iw);
+            }
+          }
+        });
+        mo.observe(iw.document.documentElement, { childList: true, subtree: true });
+      }catch{}
+    }
+
+    // Dispara el hook de varias formas para no perder el evento
+    iframe.addEventListener('load', ()=>{ tryMount(); });
+    document.addEventListener('DOMContentLoaded', ()=>{ if (iframe.contentDocument || iframe.contentWindow) tryMount(); });
+    // último recurso: intenta montar cada 1s por si el load se “escapó”
+    let safety = 0; const kick = setInterval(()=>{ try{ tryMount(); clearInterval(kick);}catch(e){ if(++safety>5) clearInterval(kick); }},1000);
   </script>
 </body>
 </html>
