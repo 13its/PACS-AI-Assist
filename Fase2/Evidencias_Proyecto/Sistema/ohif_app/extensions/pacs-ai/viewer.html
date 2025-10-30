@@ -53,7 +53,7 @@
       if (!doc) return false;
       if (doc.getElementById('pacsai-toolbar-btn')) return true;
 
-      // 1) Localiza header/toolbar y el botón "Reset" (multi-idioma)
+      // 1) Localiza header/toolbar y el botón "Reset"
       const header =
         doc.querySelector('header, [role="banner"], .ohif-header, .ohif-top-bar, .ViewerHeader, .ViewerTopBar') || doc.body;
 
@@ -63,67 +63,173 @@
         const t = (el.getAttribute?.('title') || el.getAttribute?.('aria-label') || el.textContent || '').trim();
         return /^(reset\s*view|reset|restablecer|reiniciar)/i.test(t);
       });
+      if (!resetBtn) return false;
 
-      if (!resetBtn) return false; // aún no montó la toolbar → deja que el poll/observer reintenten
+      // 2) Wrapper para controlar espaciado y tooltip propio
+      const wrapper = doc.createElement('span');
+      wrapper.id = 'pacsai-wrapper';
+      wrapper.style.cssText = [
+        'display:inline-flex','align-items:center','position:relative',
+        'margin-left:14px'     // aire con el lado izquierdo (no mueve hacia la izq)
+      ].join(';');
 
-      // 2) Crea el botón (sin position:absolute)
+      // --- botón ---
       const btn = doc.createElement('button');
       btn.id = 'pacsai-toolbar-btn';
       btn.type = 'button';
-      btn.setAttribute('aria-label','Enviar a IA');
-      btn.title = 'Enviar a IA';
-      btn.textContent = 'Enviar a IA';
+      btn.setAttribute('aria-label','PACS-AI Assist');
+      // IMPORTANTE: sin title -> no tooltip nativo
+      btn.textContent = 'PACS-AI Assist';
       btn.style.cssText = [
-        'padding:0 10px',               // padding vertical 0 para alinear con la altura clonada
-        'height:auto',                  // se fijará igual a Reset abajo
-        'border-radius:4px',            // se sobrescribe con el de Reset
-        'border:1px solid rgba(255,255,255,0.18)',
-        'background:rgba(255,255,255,0.08)',
-        'color:#fff','cursor:pointer',
+        'padding:0 10px','height:auto',
+        'border-radius:4px','border:1px solid rgba(255,255,255,0.18)',
+        'background:rgba(255,255,255,0.08)','color:#fff','cursor:pointer',
         'font:500 12px/1 system-ui,Segoe UI,Roboto,Arial',
-        'display:inline-flex','align-items:center','gap:6px',
-        'white-space:nowrap','margin-left:8px'
+        'display:inline-flex','align-items:center','gap:6px','white-space:nowrap',
+        'pointer-events:auto','z-index:1',
+        'margin-right:6px'     // ← aire con el “palito”/menú a la DERECHA
       ].join(';');
-      btn.onmouseenter = () => (btn.style.background='rgba(255,255,255,0.16)');
-      btn.onmouseleave = () => (btn.style.background='rgba(255,255,255,0.08)');
-      btn.onclick = (e)=>{ e.preventDefault(); e.stopPropagation(); sendToAI(iw); };
 
-      // 3) Si hay separador inmediatamente después de Reset, inserta ANTES del separador
-      let insertAfter = resetBtn;
-      const next = resetBtn.nextElementSibling;
-      if (next && (
-          next.getAttribute('role') === 'separator' ||
-          /\bdivider|separator|Separator|ToolbarSeparator\b/i.test(next.className || '')
-        )) {
-        insertAfter = next; // insertaremos antes de este separador
-        insertAfter.parentElement.insertBefore(btn, insertAfter);
-      } else {
-        resetBtn.insertAdjacentElement('afterend', btn);
-      }
-
-      // 4) Igualar altura y redondeo al botón Reset para alinear verticalmente
+      // igualar altura/radio a Reset
       const rs = iw.getComputedStyle(resetBtn);
       const h  = parseFloat(rs.height) || 28;
-      btn.style.height       = `${Math.round(h)}px`;
-      btn.style.lineHeight   = `${Math.round(h)}px`;
+      btn.style.height     = `${Math.round(h)}px`;
+      btn.style.lineHeight = `${Math.round(h)}px`;
       if (rs.borderRadius) btn.style.borderRadius = rs.borderRadius;
 
-      // Asegura alineación del contenedor
+      // === Tooltip GLOBAL (en <body>) estilo OHIF ===
+      // === 0) limpiar tooltips antiguos (por si quedó alguno) ===
+      doc.getElementById('pacsai-tip')?.remove();
+      doc.getElementById('pacsai-reset-blocker')?.remove();
+
+      // === 1) Tooltip ligero fijo dentro del iframe ===
+      const tip = doc.createElement('div');
+      tip.id = 'pacsai-tip';
+      tip.role = 'tooltip';
+      tip.style.cssText = [
+        'position:fixed','left:-9999px','top:-9999px',
+        'background:#161b22','color:#e6edf3',
+        'border:1px solid rgba(255,255,255,0.12)','border-radius:6px',
+        'padding:8px 10px','box-shadow:0 8px 24px rgba(0,0,0,.3)',
+        'font:12px/1.2 system-ui,Segoe UI,Roboto,Arial',
+        'white-space:nowrap','opacity:0',
+        'transition:opacity .12s ease, transform .12s ease',
+        'pointer-events:none','z-index:2147483647',
+        'transform:translateY(4px)'
+      ].join(';');
+      tip.innerHTML = `
+        <div style="font-weight:600; margin-bottom:2px;">Send to AI</div>
+        <div style="font-size:11px; opacity:.8;">Analizar nódulos candidatos</div>
+      `;
+      const arrow = doc.createElement('div');
+      arrow.style.cssText = [
+        'position:absolute','top:-5px','left:50%','transform:translateX(-50%) rotate(45deg)',
+        'width:10px','height:10px','background:#161b22',
+        'border-left:1px solid rgba(255,255,255,0.12)',
+        'border-top:1px solid rgba(255,255,255,0.12)'
+      ].join(';');
+      tip.appendChild(arrow);
+      doc.body.appendChild(tip);
+
+      function showTip(el){
+        const r = el.getBoundingClientRect();
+        const x = Math.round(r.left + r.width/2);
+        const y = Math.round(r.bottom + 8);
+        tip.style.left = x + 'px';
+        tip.style.top  = y + 'px';
+        tip.style.opacity = '1';
+        tip.style.transform = 'translateY(0)';
+      }
+      function hideTip(){
+        tip.style.opacity = '0';
+        tip.style.left = '-9999px';
+        tip.style.top  = '-9999px';
+        tip.style.transform = 'translateY(4px)';
+      }
+
+      // === 2) Bloqueador invisible sobre el Reset (mientras hover) ===
+      const blocker = doc.createElement('div');
+      blocker.id = 'pacsai-reset-blocker';
+      blocker.style.cssText = [
+        'position:fixed','left:-9999px','top:-9999px',
+        'width:1px','height:1px','z-index:2147483646',
+        'background:transparent','pointer-events:auto' // atrapa el hover
+      ].join(';');
+      doc.body.appendChild(blocker);
+
+      function showBlockerOverReset(){
+        const r = resetBtn.getBoundingClientRect();
+        blocker.style.left = r.left + 'px';
+        blocker.style.top  = r.top  + 'px';
+        blocker.style.width  = r.width  + 'px';
+        blocker.style.height = r.height + 'px';
+      }
+      function hideBlocker(){
+        blocker.style.left = '-9999px';
+        blocker.style.top  = '-9999px';
+        blocker.style.width = '1px';
+        blocker.style.height = '1px';
+      }
+
+      // === 3) Evitar burbujeo + activar/desactivar bloqueo/tooltip ===
+      const stop = (e)=>e.stopPropagation();
+      btn.addEventListener('mouseenter', stop, true);
+      btn.addEventListener('mouseleave', stop, true);
+      btn.addEventListener('mousemove',  stop, true);
+
+      btn.addEventListener('mouseenter', ()=>{
+        // desactiva eventos directos del botón Reset y, adicionalmente, pon un blocker encima
+        resetBtn._pe_prev = resetBtn.style.pointerEvents;
+        resetBtn.style.pointerEvents = 'none';
+        showBlockerOverReset();
+
+        btn.style.background='rgba(255,255,255,0.16)';
+        showTip(btn);
+      }, true);
+
+      btn.addEventListener('mouseleave', ()=>{
+        resetBtn.style.pointerEvents = resetBtn._pe_prev || '';
+        hideBlocker();
+
+        btn.style.background='rgba(255,255,255,0.08)';
+        hideTip();
+      }, true);
+
+      btn.onclick = (e)=>{ e.preventDefault(); e.stopPropagation(); sendToAI(iw); };
+
+      // montar
+      wrapper.appendChild(btn);
+      wrapper.appendChild(tip);
+
+      // insertar: si hay separador tras Reset, va ANTES del separador; si no, después de Reset
+      const next = resetBtn.nextElementSibling;
+      if (next && (next.getAttribute('role') === 'separator' ||
+                  /\bdivider|separator|Separator|ToolbarSeparator\b/i.test(next.className||''))) {
+        next.parentElement.insertBefore(wrapper, next);
+      } else {
+        resetBtn.insertAdjacentElement('afterend', wrapper);
+      }
+
+
+      // Contenedor en flex + gap
       const parent = resetBtn.parentElement || header;
       const ps = iw.getComputedStyle(parent);
       if (ps.display !== 'flex' && ps.display !== 'inline-flex') parent.style.display = 'inline-flex';
       if (!ps.gap || ps.gap === '0px') parent.style.gap = '8px';
       if (ps.alignItems !== 'center') parent.style.alignItems = 'center';
 
-      // 5) Elimina fallback si estaba visible y oculta badge
-      const fb = doc.getElementById('pacsai-fallback-btn');
-      if (fb) fb.remove();
-      const badgeEl = window.document.getElementById('pacsai-badge');
-      if (badgeEl) badgeEl.style.display='none';
+      // Oculta badge y quita fallback si existiera
+      const fb = doc.getElementById('pacsai-fallback-btn'); if (fb) fb.remove();
+      const badgeEl = window.document.getElementById('pacsai-badge'); if (badgeEl) badgeEl.style.display='none';
 
-      console.log('[PACS-AI] Botón "Enviar a IA" alineado junto a Reset');
+      console.log('[PACS-AI] Botón PACS-AI Assist listo');
       return true;
+
+      function insertBeforeSafe(parent, node, before){
+        try { parent.insertBefore(node, before); } catch { resetBtn.insertAdjacentElement('afterend', node); }
+      }
     }
+
 
     function tryMount(){
       const iw = iframe.contentWindow;
