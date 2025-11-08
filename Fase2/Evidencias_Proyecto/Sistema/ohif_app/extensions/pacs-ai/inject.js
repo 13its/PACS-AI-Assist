@@ -1,4 +1,4 @@
-(function () {
+/* (function () {
   // === utilidades ==========================
   function waitFor(sel, timeout = 15000) {
     return new Promise((resolve) => {
@@ -92,4 +92,4 @@
     if (!mounted) mountFloating();
     console.log('[PACS-AI] inject listo.');
   })();
-})();
+})(); */

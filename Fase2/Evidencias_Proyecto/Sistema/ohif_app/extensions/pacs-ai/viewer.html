@@ -2,132 +2,143 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>PACS-AI OHIF Wrapper</title>
+  <title>PACS-AI OHIF Wrapper (Merged v7 – centered)</title>
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <style>
-    html,body,iframe { height:100%; width:100%; margin:0; border:0; }
-    body { background:#0b1020; }
-    #pacsai-badge{
-      position:fixed;left:10px;top:10px;z-index:2147483647;
-      background:#234;color:#9fefb3;padding:4px 8px;border-radius:8px;
-      font:12px/1.2 system-ui,Segoe UI,Roboto,Arial;opacity:.9
-    }
+    html, body { margin:0; padding:0; height:100%; background:#0b1020; }
+    #ohif { position: fixed; inset: 0; width: 100vw; height: 100vh; border: 0; display: block; z-index: 1; }
+    #pacsai-badge{ position:fixed; left:12px; top:12px; z-index:2147483647; background:#234;color:#9ef; padding:6px 10px; border-radius:8px; font:12px/1.2 system-ui, Segoe UI, Roboto, Arial; opacity:.9; box-shadow:0 2px 8px rgba(0,0,0,.25); transition: opacity .25s ease, transform .25s ease; }
+    #pacsai-badge.hide{ opacity:0; transform:translateY(-6px); pointer-events:none; }
+    #pacsai-fab{ position:fixed; right:16px; top:10px; z-index:2147483647; background:#0ea5e9; color:#fff; border:none; border-radius:10px; padding:10px 14px; font:600 14px/1 system-ui, Segoe UI, Roboto, Arial; box-shadow:0 4px 16px rgba(0,0,0,.25); cursor:pointer; }
+    #pacsai-fab:hover{ filter:brightness(1.08); }
+    #toast{ position:fixed; right:16px; bottom:16px; z-index:2147483647; background:#111827; color:#e5e7eb; padding:10px 12px; border-radius:8px; font:13px/1.2 system-ui, Segoe UI, Roboto, Arial; box-shadow:0 6px 20px rgba(0,0,0,.35); display:none; }
+    #toast.ok{ background:#064e3b; color:#d1fae5; }
+    #toast.err{ background:#7f1d1d; color:#fee2e2; }
   </style>
 </head>
 <body>
-  <div id="pacsai-badge">PACS-AI: cargando…</div>
+  <div id="pacsai-badge">PACS-AI: cargando...</div>
+  <button id="pacsai-fab" title="Enviar a analizar con IA">Enviar a IA</button>
+  <div id="toast"></div>
   <iframe id="ohif" allow="clipboard-read; clipboard-write"></iframe>
 
   <script>
     const BACKEND = 'http://127.0.0.1:8001/analyze/download-only';
-    const badge   = document.getElementById('pacsai-badge');
-    const iframe  = document.getElementById('ohif');
+    const CANDIDATE_OHIF_ROUTES = ['/ohif/viewer', '/ohif', '/ohif/', '/ohif-native/viewer'];
 
-    // Cache-buster para que SIEMPRE recargue el contenido del iframe
-    const sep = location.search ? '&' : '?';
-    iframe.src = '/ohif/viewer' + location.search + sep + 'pacsai=' + Date.now();
+    const badge = document.getElementById('pacsai-badge');
+    const fab   = document.getElementById('pacsai-fab');
+    const toast = document.getElementById('toast');
+    const iframe = document.getElementById('ohif');
 
-    const getStudyUID = (win) => {
-      const q1 = new URLSearchParams((win&&win.location&&win.location.search)||'');
-      const q2 = new URLSearchParams(location.search);
-      return (q1.get('StudyInstanceUIDs') || q2.get('StudyInstanceUIDs') || '').replace(/[<>]/g,'');
-    };
+    function showToast(msg, type=''){ toast.textContent = msg; toast.className = type ? type : ''; toast.style.display = 'block'; clearTimeout(showToast._t); showToast._t = setTimeout(()=> { toast.style.display='none'; }, 4500); }
 
-    async function sendToAI(win){
-      const suid = getStudyUID(win);
-      if(!suid){ (win||window).alert('No se encontró StudyInstanceUIDs'); return; }
-      try{
-        const res = await fetch(BACKEND,{
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({StudyInstanceUID:suid, background:true})
-        });
-        if(!res.ok) throw new Error('HTTP '+res.status);
-        await res.json().catch(()=>{});
-        (win||window).alert('Enviado a IA ✅');
-      }catch(e){ console.error(e); (win||window).alert('Error red: '+e); }
+    function getStudyUID(win=window){
+      const q1 = new URLSearchParams(win && win.location && win.location.search || '');
+      if(q1.get('StudyInstanceUIDs')) return (q1.get('StudyInstanceUIDs')||'').replace(/[<>]/g,'');
+      if(q1.get('StudyInstanceUID'))  return (q1.get('StudyInstanceUID')||'').replace(/[<>]/g,'');
+      for (const [k,v] of q1.entries()){ if (/uid/i.test(k) && v) return (v||'').replace(/[<>]/g,''); }
+      return '';
     }
 
+    async function detectOhifRoute(){
+      for (const path of CANDIDATE_OHIF_ROUTES){
+        try{
+          const res = await fetch(path, { method:'GET' });
+          if (res.ok || res.status === 200) return path;
+        }catch(e){}
+      }
+      return null;
+    }
+
+    (async function loadIframe(){
+      const base = await detectOhifRoute();
+      if(!base){
+        badge.textContent = 'No se encontró la ruta de OHIF (/ohif/viewer). Revisa ServeFolders/config.';
+        return;
+      }
+      const sep = location.search.includes('?') ? '&' : '?';
+      iframe.src = base + location.search + sep + 'pacsai=' + Date.now();
+      iframe.addEventListener('load', () => { setTimeout(()=> badge.classList.add('hide'), 250); setTimeout(()=> badge.remove(), 800); tryMount(); }, { once:true });
+      iframe.addEventListener('error', () => { badge.textContent = 'Error cargando visor'; });
+    })();
+
+    async function sendToAI(win){
+      const suid = getStudyUID();
+      if(!suid){ (win||window).alert('No se encontró StudyInstanceUID(s)'); return; }
+      const oldTxt = fab.textContent;
+      fab.disabled = true; fab.textContent = 'Enviando...';
+      try{
+        const res = await fetch(BACKEND,{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ StudyInstanceUID: suid, background:true }) });
+        if(!res.ok) throw new Error('HTTP '+res.status);
+        showToast('✅ Enviado a IA correctamente', 'ok');
+      }catch(e){ console.error(e); showToast('❌ Error al enviar a IA: ' + e.message, 'err'); }
+      finally{ fab.textContent = oldTxt; fab.disabled = false; }
+    }
+    fab.addEventListener('click', ()=>sendToAI());
+
+    function removeFab(){ if (fab) { fab.remove(); } }
+
     function ensureHeaderButton(iw){
-      const doc = iw?.document;
-      if (!doc) return false;
-      if (doc.getElementById('pacsai-toolbar-btn')) return true;
+      const doc = iw?.document; if (!doc) return false;
+      if (doc.getElementById('pacsai-toolbar-btn')) { removeFab(); return true; }
 
-      // 1) Localiza header/toolbar y el botón "Reset"
-      const header =
-        doc.querySelector('header, [role="banner"], .ohif-header, .ohif-top-bar, .ViewerHeader, .ViewerTopBar') || doc.body;
+      const header = doc.querySelector('header, [role="banner"], .ohif-header, .ohif-top-bar, .ViewerHeader, .ViewerTopBar') || doc.body;
+      const allBtns = Array.from(header.querySelectorAll('button, [role="button"]')).filter(el => el.offsetParent !== null);
+      if (allBtns.length < 3) return false; // esperamos a tener layout estable
 
-      const resetBtn = Array.from(
-        header.querySelectorAll('button, [role="button"], [data-cy]')
-      ).find(el => {
-        const t = (el.getAttribute?.('title') || el.getAttribute?.('aria-label') || el.textContent || '').trim();
-        return /^(reset\s*view|reset|restablecer|reiniciar)/i.test(t);
+      // contenedor más probable (padre común de la mayoría de botones)
+      const parentCounts = new Map();
+      allBtns.forEach(b => {
+        const p = b.parentElement;
+        if (!p) return;
+        parentCounts.set(p, (parentCounts.get(p)||0)+1);
       });
-      if (!resetBtn) return false;
+      const toolbar = [...parentCounts.entries()].sort((a,b)=>b[1]-a[1])[0]?.[0] || header;
 
-      // 2) Wrapper para controlar espaciado y tooltip propio
+      // Calcula índice medio (evita el slot del toggler desplegable si existe al final)
+      const buttons = Array.from(toolbar.querySelectorAll('button, [role="button"]')).filter(el => el.offsetParent !== null);
+      const midIndex = Math.floor(buttons.length / 2);
+
       const wrapper = doc.createElement('span');
       wrapper.id = 'pacsai-wrapper';
-      wrapper.style.cssText = [
-        'display:inline-flex','align-items:center','position:relative',
-        'margin-left:14px'     // aire con el lado izquierdo (no mueve hacia la izq)
-      ].join(';');
+      wrapper.style.cssText = 'display:inline-flex;align-items:center;position:relative;margin:0 12px;z-index:2147483600;';
 
-      // --- botón ---
       const btn = doc.createElement('button');
       btn.id = 'pacsai-toolbar-btn';
       btn.type = 'button';
       btn.setAttribute('aria-label','PACS-AI Assist');
-      // IMPORTANTE: sin title -> no tooltip nativo
-      btn.textContent = 'PACS-AI Assist';
-      btn.style.cssText = [
-        'padding:0 10px','height:auto',
-        'border-radius:4px','border:1px solid rgba(255,255,255,0.18)',
-        'background:rgba(255,255,255,0.08)','color:#fff','cursor:pointer',
-        'font:500 12px/1 system-ui,Segoe UI,Roboto,Arial',
-        'display:inline-flex','align-items:center','gap:6px','white-space:nowrap',
-        'pointer-events:auto','z-index:1',
-        'margin-right:6px'     // ← aire con el “palito”/menú a la DERECHA
-      ].join(';');
-
-      // igualar altura/radio a Reset
-      const rs = iw.getComputedStyle(resetBtn);
+      btn.title = 'Enviar a IA';
+      // Build icon + label (safe SVG creation)
+      const _ns = 'http://www.w3.org/2000/svg';
+      const icon = doc.createElementNS(_ns, 'svg');
+      icon.setAttribute('viewBox', '0 0 24 24');
+      icon.setAttribute('width', '18');
+      icon.setAttribute('height', '18');
+      icon.setAttribute('aria-hidden', 'true');
+      icon.style.marginRight = '8px';
+      const p = doc.createElementNS(_ns, 'path');
+      p.setAttribute('fill', 'currentColor');
+      p.setAttribute('d','M8.5 4.5a2.5 2.5 0 0 0-2.5 2.5v.3A3.2 3.2 0 0 0 3 10.5c0 1.4.9 2.7 2.2 3.2-.4 1.6.6 3.3 2.3 3.7.5.1 1 .1 1.5 0V18a2 2 0 0 0 2 2h.3a2.5 2.5 0 0 0 2.4-2c.7.2 1.4.2 2.1 0a2.8 2.8 0 0 0 1.9-3.5c1.2-.6 2-1.8 2-3.2a3.5 3.5 0 0 0-3.1-3.5A2.8 2.8 0 0 0 14.5 4c-1 0-1.9.5-2.4 1.3A2.8 2.8 0 0 0 8.5 4.5Z');
+      icon.appendChild(p);
+      const label = doc.createElement('span');
+      label.textContent = 'PACS-AI';
+      label.style.fontWeight = '600';
+      label.style.letterSpacing = '.2px';
+      btn.textContent = ''; btn.appendChild(icon); btn.appendChild(label);
+      btn.style.cssText = 'position:relative;z-index:2147483601;padding:0 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.10);color:#fff;cursor:pointer;font:600 12px/1 system-ui,Segoe UI,Roboto,Arial;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;pointer-events:auto;';
+      const rs = iw.getComputedStyle(buttons[0]);
       const h  = parseFloat(rs.height) || 28;
-      btn.style.height     = `${Math.round(h)}px`;
-      btn.style.lineHeight = `${Math.round(h)}px`;
-      if (rs.borderRadius) btn.style.borderRadius = rs.borderRadius;
+      btn.style.height     = h + 'px'; btn.style.lineHeight = h + 'px'; if (rs.borderRadius) btn.style.borderRadius = rs.borderRadius; btn.style.width = Math.max(h*3, 84) + 'px'; btn.style.padding='0 12px'; btn.style.justifyContent='center';
 
-      // === Tooltip GLOBAL (en <body>) estilo OHIF ===
-      // === 0) limpiar tooltips antiguos (por si quedó alguno) ===
-      doc.getElementById('pacsai-tip')?.remove();
-      doc.getElementById('pacsai-reset-blocker')?.remove();
-
-      // === 1) Tooltip ligero fijo dentro del iframe ===
+      // Tooltip propio centrado
       const tip = doc.createElement('div');
       tip.id = 'pacsai-tip';
       tip.role = 'tooltip';
-      tip.style.cssText = [
-        'position:fixed','left:-9999px','top:-9999px',
-        'background:#161b22','color:#e6edf3',
-        'border:1px solid rgba(255,255,255,0.12)','border-radius:6px',
-        'padding:8px 10px','box-shadow:0 8px 24px rgba(0,0,0,.3)',
-        'font:12px/1.2 system-ui,Segoe UI,Roboto,Arial',
-        'white-space:nowrap','opacity:0',
-        'transition:opacity .12s ease, transform .12s ease',
-        'pointer-events:none','z-index:2147483647',
-        'transform:translateY(4px)'
-      ].join(';');
-      tip.innerHTML = `
-        <div style="font-weight:600; margin-bottom:2px;">Send to AI</div>
-        <div style="font-size:11px; opacity:.8;">Analizar nódulos candidatos</div>
-      `;
+      tip.style.cssText = 'position:fixed;left:-9999px;top:-9999px;background:#0F1C3C;color:#E5E7EB;border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;box-shadow:0 6px 20px rgba(0,0,0,.35);font:12px/1.2 system-ui,Segoe UI,Roboto,Arial;white-space:nowrap;opacity:0;transition:opacity .12s ease, transform .12s ease;pointer-events:none;z-index:2147483646;transform:translate(-50%,4px)';
+      tip.innerHTML = '<div style="font-weight:600; margin-bottom:2px;">Send to AI</div><div style="font-size:11px; color:#60A5FA;">Analizar nódulos candidatos</div>';
       const arrow = doc.createElement('div');
-      arrow.style.cssText = [
-        'position:absolute','top:-5px','left:50%','transform:translateX(-50%) rotate(45deg)',
-        'width:10px','height:10px','background:#161b22',
-        'border-left:1px solid rgba(255,255,255,0.12)',
-        'border-top:1px solid rgba(255,255,255,0.12)'
-      ].join(';');
+      arrow.style.cssText = 'position:absolute;top:-5px;left:50%;transform:translateX(-50%) rotate(45deg);width:10px;height:10px;background:#161b22;border-left:1px solid rgba(255,255,255,0.12);border-top:1px solid rgba(255,255,255,0.12)';
       tip.appendChild(arrow);
       doc.body.appendChild(tip);
 
@@ -138,195 +149,43 @@
         tip.style.left = x + 'px';
         tip.style.top  = y + 'px';
         tip.style.opacity = '1';
-        tip.style.transform = 'translateY(0)';
+        tip.style.transform = 'translate(-50%,0)';
       }
       function hideTip(){
         tip.style.opacity = '0';
         tip.style.left = '-9999px';
         tip.style.top  = '-9999px';
-        tip.style.transform = 'translateY(4px)';
+        tip.style.transform = 'translate(-50%,4px)';
       }
 
-      // === 2) Bloqueador invisible sobre el Reset (mientras hover) ===
-      const blocker = doc.createElement('div');
-      blocker.id = 'pacsai-reset-blocker';
-      blocker.style.cssText = [
-        'position:fixed','left:-9999px','top:-9999px',
-        'width:1px','height:1px','z-index:2147483646',
-        'background:transparent','pointer-events:auto' // atrapa el hover
-      ].join(';');
-      doc.body.appendChild(blocker);
-
-      function showBlockerOverReset(){
-        const r = resetBtn.getBoundingClientRect();
-        blocker.style.left = r.left + 'px';
-        blocker.style.top  = r.top  + 'px';
-        blocker.style.width  = r.width  + 'px';
-        blocker.style.height = r.height + 'px';
-      }
-      function hideBlocker(){
-        blocker.style.left = '-9999px';
-        blocker.style.top  = '-9999px';
-        blocker.style.width = '1px';
-        blocker.style.height = '1px';
-      }
-
-      // === 3) Evitar burbujeo + activar/desactivar bloqueo/tooltip ===
-      const stop = (e)=>e.stopPropagation();
-      btn.addEventListener('mouseenter', stop, true);
-      btn.addEventListener('mouseleave', stop, true);
-      btn.addEventListener('mousemove',  stop, true);
-
-      btn.addEventListener('mouseenter', ()=>{
-        // desactiva eventos directos del botón Reset y, adicionalmente, pon un blocker encima
-        resetBtn._pe_prev = resetBtn.style.pointerEvents;
-        resetBtn.style.pointerEvents = 'none';
-        showBlockerOverReset();
-
-        btn.style.background='rgba(255,255,255,0.16)';
-        showTip(btn);
-      }, true);
-
-      btn.addEventListener('mouseleave', ()=>{
-        resetBtn.style.pointerEvents = resetBtn._pe_prev || '';
-        hideBlocker();
-
-        btn.style.background='rgba(255,255,255,0.08)';
-        hideTip();
-      }, true);
-
+      btn.addEventListener('mouseenter', ()=>{ btn.style.background='rgba(255,255,255,0.18)'; showTip(btn); }, true);
+      btn.addEventListener('mouseleave', ()=>{ btn.style.background='rgba(255,255,255,0.10)'; hideTip(); }, true);
+      btn.addEventListener('mousemove',  (e)=>e.stopPropagation(), true);
       btn.onclick = (e)=>{ e.preventDefault(); e.stopPropagation(); sendToAI(iw); };
 
-      // montar
       wrapper.appendChild(btn);
       wrapper.appendChild(tip);
 
-      // insertar: si hay separador tras Reset, va ANTES del separador; si no, después de Reset
-      const next = resetBtn.nextElementSibling;
-      if (next && (next.getAttribute('role') === 'separator' ||
-                  /\bdivider|separator|Separator|ToolbarSeparator\b/i.test(next.className||''))) {
-        next.parentElement.insertBefore(wrapper, next);
-      } else {
-        resetBtn.insertAdjacentElement('afterend', wrapper);
-      }
+      // Inserta en la posición media
+      const ref = buttons[midIndex] || buttons[buttons.length-1];
+      ref.insertAdjacentElement('beforebegin', wrapper);
 
+      // normaliza spacing
+      const ps = iw.getComputedStyle(toolbar);
+      if (ps.display !== 'flex' && ps.display !== 'inline-flex') toolbar.style.display = 'inline-flex';
+      if (!ps.gap || ps.gap === '0px') toolbar.style.gap = '12px';
+      if (ps.alignItems !== 'center') toolbar.style.alignItems = 'center';
 
-      // Contenedor en flex + gap
-      const parent = resetBtn.parentElement || header;
-      const ps = iw.getComputedStyle(parent);
-      if (ps.display !== 'flex' && ps.display !== 'inline-flex') parent.style.display = 'inline-flex';
-      if (!ps.gap || ps.gap === '0px') parent.style.gap = '8px';
-      if (ps.alignItems !== 'center') parent.style.alignItems = 'center';
-
-      // Oculta badge y quita fallback si existiera
-      const fb = doc.getElementById('pacsai-fallback-btn'); if (fb) fb.remove();
-      const badgeEl = window.document.getElementById('pacsai-badge'); if (badgeEl) badgeEl.style.display='none';
-
-      console.log('[PACS-AI] Botón PACS-AI Assist listo');
+      removeFab();
       return true;
-
-      function insertBeforeSafe(parent, node, before){
-        try { parent.insertBefore(node, before); } catch { resetBtn.insertAdjacentElement('afterend', node); }
-      }
     }
-
 
     function tryMount(){
-      const iw = iframe.contentWindow;
-      if(!iw) return;
-
-      // 1) intentar cada 200 ms hasta 16 s meterlo en header
+      const iw = iframe.contentWindow; if(!iw) return;
       let ticks = 0;
-      const poll = setInterval(() => {
-        const ok = ensureHeaderButton(iw);
-        if (ok) {
-          clearInterval(poll);
-          const fb = iw.document.getElementById('pacsai-fallback-btn');
-          if (fb) fb.remove();
-          return;
-        }
-        if (++ticks === 10) { // ~2s
-          ensureFallbackButton(iw); // muestra algo mientras tanto
-        }
-        if (ticks > 80) clearInterval(poll); // dejamos el observer haciendo el trabajo fino
-      }, 200);
-
-
-      // 2) watchdog: si en 2 s no ha podido tocar el iframe, mete fallback
-      const watchdog = setTimeout(()=>{ ensureFallback(iw); }, 2000);
-
-      function ensureFallbackButton(iw){
-        const doc = iw?.document;
-        if (!doc) return false;
-        if (doc.getElementById('pacsai-fallback-btn')) return true;
-
-        const header = doc.querySelector('header, [data-cy="header"], .ohif-header, .ohif-top-bar, .ViewerHeader, .ViewerTopBar, .Header, .TopBar') || doc.body;
-        const hRect  = header.getBoundingClientRect();
-
-        // detecta el control más a la derecha para no taparlo
-        let rightmost = null, maxRight = -Infinity;
-        const candidates = Array.from(header.querySelectorAll('button, a[role="button"], [role="button"]'))
-          .filter(el => el.offsetParent !== null);
-        for (const el of candidates){
-          const r = el.getBoundingClientRect();
-          if (r.right > maxRight){ maxRight = r.right; rightmost = r; }
-        }
-        const safeRight = Math.max(12, Math.round((hRect.right - (rightmost ? rightmost.left : hRect.right)) + 12));
-        const topPx     = Math.max(6, Math.round(hRect.top + (hRect.height - 28) / 2)); // centrado vertical en la barra
-
-        const btn = doc.createElement('button');
-        btn.id='pacsai-fallback-btn'; btn.type='button';
-        btn.setAttribute('aria-label','Enviar a IA'); btn.title='Enviar a IA';
-        btn.textContent='Enviar a IA';
-        btn.style.cssText = [
-          'position:fixed',
-          `top:${topPx}px`,
-          `right:${safeRight}px`,
-          'z-index:2147483647',
-          'padding:4px 10px',
-          'height:28px','line-height:28px',
-          'border-radius:8px',
-          'border:1px solid rgba(255,255,255,0.18)',
-          'background:rgba(255,255,255,0.08)',
-          'color:#fff','cursor:pointer',
-          'font:500 12px/28px system-ui,Segoe UI,Roboto,Arial',
-          'display:inline-flex','align-items:center','gap:6px','white-space:nowrap',
-          'backdrop-filter:blur(2px)'
-        ].join(';');
-        btn.onmouseenter=()=> (btn.style.background='rgba(255,255,255,0.16)');
-        btn.onmouseleave=()=> (btn.style.background='rgba(255,255,255,0.08)');
-        btn.onclick=(e)=>{ e.preventDefault(); e.stopPropagation(); sendToAI(iw); };
-
-        doc.body.appendChild(btn);
-        const badgeEl = window.document.getElementById('pacsai-badge');
-        if (badgeEl) badgeEl.style.display='none';
-        console.log('[PACS-AI] Botón fallback alineado con el header');
-        return true;
-      }
-
-      // 3) si el layout del iframe cambia, reinyecta si hiciera falta
-      try{
-        const mo = new iw.MutationObserver(() => {
-          const attached = ensureHeaderButton(iw);
-          if (attached) {
-            const fb = iw.document.getElementById('pacsai-fallback-btn');
-            if (fb) fb.remove(); // si ya había fallback, lo quitamos
-          } else {
-            // si aún no hay nada, garantiza fallback visible
-            if (!iw.document.getElementById('pacsai-toolbar-btn')) {
-              ensureFallbackButton(iw);
-            }
-          }
-        });
-        mo.observe(iw.document.documentElement, { childList: true, subtree: true });
-      }catch{}
+      const poll = setInterval(() => { const ok = ensureHeaderButton(iw); if (ok) { clearInterval(poll); return; } if (++ticks > 80) clearInterval(poll); }, 200);
+      try{ const mo = new iw.MutationObserver(() => { ensureHeaderButton(iw); }); mo.observe(iw.document.documentElement, { childList: true, subtree: true }); }catch{}
     }
-
-    // Dispara el hook de varias formas para no perder el evento
-    iframe.addEventListener('load', ()=>{ tryMount(); });
-    document.addEventListener('DOMContentLoaded', ()=>{ if (iframe.contentDocument || iframe.contentWindow) tryMount(); });
-    // último recurso: intenta montar cada 1s por si el load se “escapó”
-    let safety = 0; const kick = setInterval(()=>{ try{ tryMount(); clearInterval(kick);}catch(e){ if(++safety>5) clearInterval(kick); }},1000);
   </script>
 </body>
 </html>

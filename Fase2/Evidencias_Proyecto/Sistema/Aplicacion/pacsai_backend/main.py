@@ -382,9 +382,14 @@ def process_study_background(orthanc_url: str, study_uid: str):
         metas = collect_instances_meta(orthanc_url, inst_ids)
         seg_bytes = build_dummy_seg_fast(metas)
         new_id = upload_dicom(orthanc_url, seg_bytes)
+
+        # ✅ Logs útiles para validar rápido en OHIF
+        ohif_url = f"http://localhost:8042/pacs-ai/viewer.html?StudyInstanceUIDs={study_uid}"
         print(f"[AI] SEG subido: {new_id} (Study {study_uid})")
+        print(f"[AI] Abrir en OHIF: {ohif_url}")
     except Exception:
         print("[AI] Error background:\n", traceback.format_exc())
+
 
 
 # =======================

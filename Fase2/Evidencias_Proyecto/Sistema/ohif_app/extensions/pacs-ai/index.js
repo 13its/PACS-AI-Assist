@@ -1,5 +1,5 @@
 /* Minimal OHIF v3 extension: añade un botón "Enviar a IA" a la toolbar */
-export default {
+/* export default {
   id: '@local/extension-pacs-ai',
   preRegistration: () => {},
 
@@ -84,3 +84,4 @@ export default {
     };
   },
 };
+ */
