@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>PACS-AI Assist – Estudio</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<header class="app-header">
+  <div class="app-header-left">
+    <img src="../assets/pacsai-logo.jpg" alt="PACS-AI Assist" class="logo" />
+    <div class="app-title">
+      <span class="app-name">PACS-AI Assist</span>
+    </div>
+  </div>
+  <div class="app-header-right">
+    <span class="server-name">MyOrthanc</span>
+  </div>
+</header>
+
+<main class="app-main">
+  <section class="info-column">
+    <div class="card">
+      <h2>Paciente</h2>
+      <p><strong>ID:</strong> <span id="patient-id">–</span></p>
+      <p><strong>Nombre:</strong> <span id="patient-name">–</span></p>
+      <p><strong>Nacimiento:</strong> <span id="patient-birth">–</span></p>
+      <p><strong>Sexo:</strong> <span id="patient-sex">–</span></p>
+    </div>
+
+    <div class="card">
+      <h2>Estudio TAC de tórax</h2>
+      <p><strong>Fecha:</strong> <span id="study-date">–</span></p>
+      <p><strong>Descripción:</strong> <span id="study-desc">–</span></p>
+      <p><strong>Modalidad:</strong> <span id="study-modality">CT</span></p>
+      <p><strong>Serie examinada:</strong> <span id="study-body-part">–</span></p>
+    </div>
+  </section>
+
+  <section class="actions-column">
+    <div class="card action-card">
+      <button id="btn-ohif" class="btn btn-ohif" disabled>
+        <span class="btn-icon">👁</span>
+        <span>Ver en OHIF Viewer</span>
+      </button>
+      <p id="ohif-helper" class="helper-text">
+        El análisis asistido por IA se visualizará desde el visor OHIF.
+      </p>
+    </div>
+  </section>
+</main>
+
+<section class="series-section">
+  <div class="card">
+    <h2>Series del estudio</h2>
+    <table class="series-table">
+      <thead>
+      <tr>
+        <th>Serie</th>
+        <th>Imágenes</th>
+        <th>Modalidad</th>
+      </tr>
+      </thead>
+      <tbody id="series-body">
+      <tr>
+        <td colspan="3">Cargando información del estudio…</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<footer class="app-footer">
+  PACS-AI Assist © 2025 — Proyecto DUOC UC / Ingeniería Informática
+</footer>
+
+<script src="study.js"></script>
+</body>
+</html>

@@ -1,9 +1,0 @@
-fastapi
-uvicorn[standard]
-pydicom
-SimpleITK
-numpy
-opencv-python
-tqdm
-python-dotenv
-matplotlib

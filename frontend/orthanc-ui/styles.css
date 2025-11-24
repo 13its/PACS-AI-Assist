@@ -1,0 +1,299 @@
+/* ===========================
+    BASE GLOBAL
+    =========================== */
+
+    *,
+    *::before,
+    *::after {
+    box-sizing: border-box;
+    }
+
+    html,
+    body {
+    margin: 0;
+    padding: 0;
+    }
+
+    body {
+    font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+    background: #f3f6fb; /* gris muy claro clínico */
+    color: #111827;
+    }
+
+    /* ===========================
+    LAYOUT GENERAL
+    =========================== */
+
+    .app-header {
+    height: 72px;
+    padding: 0 32px;
+    background: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
+    }
+
+    .app-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    }
+
+    .logo {
+    height: 55px;
+    width: auto;
+    }
+
+    .app-title {
+    display: flex;
+    flex-direction: column;
+    font-weight: bold;
+    }
+
+    .app-name {
+    font-size: 18px;
+    font-weight: 700; /* bold */
+    color: #111827;
+    }
+
+
+    .app-header-right .server-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: #111827;
+    cursor: default;
+    }
+
+    /* MAIN y cards genéricas */
+
+    .app-main,
+    .home-main {
+    padding: 24px 32px 24px;
+    max-width: 1120px;
+    margin: 0 auto;
+    }
+
+    .card {
+    background: #ffffff;
+    border-radius: 11px;
+    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.06);
+    border: 1px solid #e5e7eb;
+    }
+
+    /* Footer */
+
+    .app-footer {
+    margin-top: 16px;
+    padding: 16px 32px 24px;
+    text-align: center;
+    font-size: 12px;
+    color: #111827;
+    }
+
+    /* ===========================
+    VISTA DE ESTUDIO (study.html)
+    =========================== */
+
+    .app-main {
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+    }
+
+    /* columnitas */
+
+    .info-column {
+    flex: 1.2;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    }
+
+    .actions-column {
+    flex: 0.8;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    }
+
+    /* tarjetas info paciente / estudio */
+
+    .info-column .card {
+    padding: 18px 20px;
+    }
+
+    .info-column h2 {
+    margin: 0 0 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #111827;
+    }
+
+    .info-column p {
+    margin: 3px 0;
+    font-size: 13px;
+    color: #111827;
+    }
+
+    .info-column strong {
+    font-weight: 500;
+    }
+
+    /* Botón OHIF */
+
+    .action-card {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    }
+
+    .btn {
+    border-radius: 11px;
+    border: none;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: background-color 0.1s ease, box-shadow 0.1s ease,
+        transform 0.05s ease;
+    }
+
+    .btn-ohif {
+    background: #111827;
+    color: #ffffff;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.25);
+    }
+
+    .btn-ohif:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+    box-shadow: none;
+    }
+
+    .btn-ohif:hover:not(:disabled) {
+    background: #020617;
+    transform: translateY(-1px);
+    }
+
+    .btn-icon {
+    font-size: 16px;
+    }
+
+    .helper-text {
+    font-size: 12px;
+    color: #111827;
+    }
+
+    /* Tabla de series */
+
+    .series-section {
+    max-width: 1120px;
+    margin: 8px auto 0;
+    padding: 0 32px 24px;
+    }
+
+    .series-section .card {
+    padding: 18px 20px 20px;
+    }
+
+    .series-section h2 {
+    margin: 0 0 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #111827;
+    }
+
+    /* tabla genérica */
+
+    .series-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    }
+
+    .series-table thead {
+    background: #f9fafb;
+    }
+
+    .series-table th,
+    .series-table td {
+      padding: 10px 12px;
+      text-align: left;
+    }
+
+.series-table th {
+    font-weight: 600;
+    color: #111827;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 16px; /* más grande los títulos de columnas */
+    text-transform: none;
+}
+
+    .series-table tbody tr:nth-child(every) {
+    background: #ffffff;
+    }
+
+    .series-table tbody tr:nth-child(2n) {
+    background: #f9fafb;
+    }
+
+    .series-table tbody td {
+      border-bottom: 1px solid #f3f4f6;
+      color: #111827;
+      font-size: 14px; /* aumentar tamaño del contenido de filas */
+      line-height: 1.5; /* mejorar legibilidad vertical */
+    }
+
+    /* ===========================
+    Botones tabla (reutilizado)
+    =========================== */
+
+    .table-btn {
+    border-radius: 11px;
+    border: none;
+    padding: 6px 11px;
+    font-size: 12px;
+    cursor: pointer;
+    background: #111827;
+    color: #ffffff;
+    margin-right: 4px;
+    font-weight: 500;
+    }
+
+    .table-btn.secondary {
+    background: #4b5563;
+    }
+
+    .table-btn:hover {
+    opacity: 0.93;
+    }
+
+    /* ===========================
+    RESPONSIVE
+    =========================== */
+
+    @media (max-width: 960px) {
+    .app-header {
+        padding: 0 16px;
+    }
+
+    .app-main,
+    .home-main {
+        padding: 16px;
+    }
+
+    .app-main {
+        flex-direction: column;
+    }
+
+    .series-section {
+        padding: 0 16px 24px;
+    }
+    }
