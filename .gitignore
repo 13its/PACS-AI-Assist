@@ -1,0 +1,36 @@
+# Ignorar cache de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Entornos virtuales
+venv/
+pacsai_env/
+env/
+
+# Archivos de logs
+*.log
+
+# Salidas intermedias o temporales
+*.tmp
+*.temp
+
+# Archivos del sistema
+Thumbs.db
+.DS_Store
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Modelos enormes que NO quieres subir si no es necesario
+*.h5
+*.keras
+
+# Carpetas generadas por OHIF o build
+dist/
+build/
+
+# Carpetas de Orthanc (storage NO debe subirse)
+OrthancStorage/
+C:/Orthanc/

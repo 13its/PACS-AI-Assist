@@ -1,0 +1,6 @@
+{
+  "name": "@local/extension-pacs-ai",
+  "version": "0.0.1",
+  "main": "src/index.js",
+  "ohif": { "type": "extension" }
+}

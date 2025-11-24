@@ -1,0 +1,4 @@
+{
+  "LuaEnabled": true,
+  "LuaScripts": [ "C:/Orthanc/scripts/ai_hook.lua" ]
+}

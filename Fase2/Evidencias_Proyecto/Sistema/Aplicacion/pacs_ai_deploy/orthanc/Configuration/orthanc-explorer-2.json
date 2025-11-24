@@ -1,0 +1,9 @@
+{
+    "OrthancExplorer2" : {
+        "Enable": true,
+        "IsDefaultOrthancUI": true
+
+        // more configurations options available ... check 
+        // https://github.com/orthanc-server/orthanc-explorer-2/blob/master/Plugin/DefaultConfiguration.json
+    }
+}
