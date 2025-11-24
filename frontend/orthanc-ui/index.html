@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>PACS-AI Assist – Inicio</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="home.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+</head>
+<body>
+<header class="app-header">
+  <div class="app-header-left">
+    <img src="../assets/pacsai_icon.png" alt="PACS-AI Assist" class="logo" />
+    <div class="app-title">
+      <span class="app-name">PACS-AI <br>Assist</span>
+    </div>
+  </div>
+  <div class="app-header-right">
+    <span class="server-name">MyOrthanc</span>
+  </div>
+</header>
+
+<main class="home-main">
+  <section class="home-hero card">
+    <div class="home-hero-center">
+      <div class="home-logo-circle">
+        <img src="../assets/pacsai_icon.png" alt="PACS-AI Assist" />
+      </div>
+      <h1>PACS-AI Assist</h1>
+      <p>Plataforma clínica de análisis automatizado para TC de tórax.</p>
+    </div>
+
+      <div class="home-actions">
+      <button id="btn-upload" class="home-action-card">
+        <div class="icon">
+          <svg xmlns="http://www.w3.org/2000/svg" height="40px" viewBox="0 -960 960 960" width="40px" fill="#111827"><path d="M446.67-315.33v-356L332-556.67l-47.33-48L480-800l195.33 195.33-47.33 48-114.67-114.66v356h-66.66ZM226.67-160q-27 0-46.84-19.83Q160-199.67 160-226.67V-362h66.67v135.33h506.66V-362H800v135.33q0 27-19.83 46.84Q760.33-160 733.33-160H226.67Z"/></svg>
+        </div>
+        <div class="text">
+          <span class="title">Subir DICOM</span>
+        </div>
+      </button>
+
+      <button id="btn-view" class="home-action-card">
+        <div class="icon">
+          <svg xmlns="http://www.w3.org/2000/svg" height="40px" viewBox="0 -960 960 960" width="40px" fill="#111827"><path d="M146.67-160q-27 0-46.84-20.17Q80-200.33 80-226.67v-506.66q0-26.34 19.83-46.5Q119.67-800 146.67-800H414l66.67 66.67h332.66q26.34 0 46.5 20.16Q880-693 880-666.67v440q0 26.34-20.17 46.5Q839.67-160 813.33-160H146.67Zm0-66.67h666.66v-440H453l-66.67-66.66H146.67v506.66Zm0 0v-506.66V-226.67Z"/></svg>
+        </div>
+        <div class="text">
+          <span class="title">Ver estudios</span>
+        </div>
+      </button>
+
+      <button id="btn-search" class="home-action-card">
+        <div class="icon">
+          <svg xmlns="http://www.w3.org/2000/svg" height="40px" viewBox="0 -960 960 960" width="40px" fill="#111827"><path d="M792-120.67 532.67-380q-30 25.33-69.64 39.67Q423.39-326 378.67-326q-108.44 0-183.56-75.17Q120-476.33 120-583.33t75.17-182.17q75.16-75.17 182.5-75.17 107.33 0 182.16 75.17 74.84 75.17 74.84 182.27 0 43.23-14 82.9-14 39.66-40.67 73l260 258.66-48 48Zm-414-272q79.17 0 134.58-55.83Q568-504.33 568-583.33q0-79-55.42-134.84Q457.17-774 378-774q-79.72 0-135.53 55.83-55.8 55.84-55.8 134.84t55.8 134.83q55.81 55.83 135.53 55.83Z"/></svg>
+        </div>
+        <div class="text">
+          <span class="title">Buscar</span>
+        </div>
+      </button>
+    </div>
+  </section>
+
+  <section class="card home-table-section" id="studies-section">
+    <div class="home-table-header">
+      <h2>Estudios recientes</h2>
+    </div>
+
+    <table class="series-table">
+      <thead>
+      <tr>
+        <th>Paciente</th>
+        <th>Estudio</th>
+        <th>Fecha</th>
+        <th>Acciones</th>
+      </tr>
+      </thead>
+      <tbody id="studies-body">
+      <tr>
+        <td colspan="4">Cargando estudios desde Orthanc…</td>
+      </tr>
+      </tbody>
+    </table>
+  </section>
+</main>
+
+<footer class="app-footer">
+  PACS-AI Assist © 2025 — Proyecto DUOC UC / Ingeniería Informática
+</footer>
+
+<script src="home.js"></script>
+</body>
+</html>
